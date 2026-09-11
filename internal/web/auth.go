@@ -24,12 +24,13 @@ type Auth struct {
 func (a Auth) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if !ok || strings.TrimSpace(token) == "" {
+		token = strings.TrimSpace(token)
+		if !ok || token == "" {
 			writeError(w, http.StatusUnauthorized, "missing bearer token")
 			return
 		}
 
-		payload, err := a.Tokens.VerifyAccessToken(strings.TrimSpace(token))
+		payload, err := a.Tokens.VerifyAccessToken(token)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "invalid or expired access token")
 			return

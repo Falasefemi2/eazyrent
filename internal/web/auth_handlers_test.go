@@ -144,10 +144,10 @@ func TestAuthEndpoints(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("/me: want 200, got %d (%s)", rec.Code, rec.Body.String())
 	}
-	var me map[string]any
+	var me userResponse
 	decodeBody(t, rec, &me)
-	if me["email"] != email || me["password_hash"] != nil {
-		t.Fatalf("wrong /me body: %v", me)
+	if me.Email != email {
+		t.Fatalf("wrong /me body: %+v", me)
 	}
 
 	// Refresh rotation and reuse detection.
@@ -311,10 +311,10 @@ func TestUpdateAvatar(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("set avatar: want 200, got %d (%s)", rec.Code, rec.Body.String())
 	}
-	var me map[string]any
+	var me userResponse
 	decodeBody(t, rec, &me)
-	if me["avatar_url"] != "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg" {
-		t.Fatalf("avatar not persisted: %v", me)
+	if me.AvatarURL == nil || *me.AvatarURL != "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg" {
+		t.Fatalf("avatar not persisted: %+v", me)
 	}
 
 	rec = doJSON(t, mux, http.MethodPut, "/me/avatar", `{"avatar_url":""}`, bearer)
@@ -322,7 +322,7 @@ func TestUpdateAvatar(t *testing.T) {
 		t.Fatalf("clear avatar: want 200, got %d (%s)", rec.Code, rec.Body.String())
 	}
 	decodeBody(t, rec, &me)
-	if me["avatar_url"] != nil {
-		t.Fatalf("avatar not cleared: %v", me)
+	if me.AvatarURL != nil {
+		t.Fatalf("avatar not cleared: %+v", me)
 	}
 }

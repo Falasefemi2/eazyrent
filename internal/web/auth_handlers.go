@@ -35,11 +35,12 @@ func authErrorStatus(err error) int {
 }
 
 func writeAuthError(w http.ResponseWriter, err error) {
-	if authErrorStatus(err) == http.StatusInternalServerError {
-		writeError(w, http.StatusInternalServerError, "internal error")
+	status := authErrorStatus(err)
+	if status == http.StatusInternalServerError {
+		writeError(w, status, "internal error")
 		return
 	}
-	writeError(w, authErrorStatus(err), err.Error())
+	writeError(w, status, err.Error())
 }
 
 type signUpRequest struct {

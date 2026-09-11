@@ -23,6 +23,10 @@ const VerificationTTL = 24 * time.Hour
 // ResetTokenTTL is how long a password-reset link stays valid.
 const ResetTokenTTL = time.Hour
 
+// pgUniqueViolation is the Postgres error code for unique-constraint
+// violations, used to turn a sign-up race into ErrEmailTaken.
+const pgUniqueViolation = "23505"
+
 // Service orchestrates the auth flows over a Store, Tokens and an
 // EmailSender, mirroring the TS AuthService. It is a concrete type wired
 // explicitly in main; handlers call it directly.
@@ -76,9 +80,9 @@ func (s Service) SignUp(ctx context.Context, email, password, phone, fullName st
 	user, err := s.Users.CreateUser(ctx, email, phone, passwordHash, fullName)
 	if err != nil {
 		// Two concurrent sign-ups can both pass the check above; the
-		// unique constraint is the arbiter (Postgres 23505).
+		// unique constraint is the arbiter.
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
 			return AuthTokens{}, ErrEmailTaken
 		}
 		return AuthTokens{}, err

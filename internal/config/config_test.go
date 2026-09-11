@@ -40,3 +40,13 @@ func TestLoadMissingDatabase(t *testing.T) {
 		t.Fatal("Load should fail without DATABASE_URL")
 	}
 }
+
+func TestLoadBadInt(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost:5432/test?sslmode=disable")
+	t.Setenv("ACCESS_TOKEN_SECRET", "test-secret")
+	t.Setenv("ACCESS_TOKEN_TTL_SECONDS", "not-a-number")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("Load should fail on non-integer ACCESS_TOKEN_TTL_SECONDS")
+	}
+}

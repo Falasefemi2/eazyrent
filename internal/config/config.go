@@ -16,12 +16,21 @@ type Config struct {
 }
 
 func Load() (Config, error) {
+	accessTTLSeconds, err := getenvInt("ACCESS_TOKEN_TTL_SECONDS", 3600)
+	if err != nil {
+		return Config{}, err
+	}
+	refreshTTLDays, err := getenvInt("REFRESH_TOKEN_TTL_DAYS", 30)
+	if err != nil {
+		return Config{}, err
+	}
+
 	cfg := Config{
 		Addr:              getenv("ADDR", ":8080"),
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		AccessTokenSecret: os.Getenv("ACCESS_TOKEN_SECRET"),
-		AccessTokenTTL:    time.Duration(getenvInt("ACCESS_TOKEN_TTL_SECONDS", 3600)) * time.Second,
-		RefreshTokenTTL:   time.Duration(getenvInt("REFRESH_TOKEN_TTL_DAYS", 30)) * 24 * time.Hour,
+		AccessTokenTTL:    time.Duration(accessTTLSeconds) * time.Second,
+		RefreshTokenTTL:   time.Duration(refreshTTLDays) * 24 * time.Hour,
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -47,14 +56,14 @@ func getenv(key, def string) string {
 	return def
 }
 
-func getenvInt(key string, def int) int {
+func getenvInt(key string, def int) (int, error) {
 	v := os.Getenv(key)
 	if v == "" {
-		return def
+		return def, nil
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil {
-		return def
+		return 0, errors.New(key + " must be an integer")
 	}
-	return n
+	return n, nil
 }

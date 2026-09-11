@@ -1,0 +1,8 @@
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS favorites;
+DROP TABLE IF EXISTS listing_media;
+DROP TABLE IF EXISTS listings;
+DROP TABLE IF EXISTS users;
+
+DROP TYPE IF EXISTS media_type;
+DROP TYPE IF EXISTS status;

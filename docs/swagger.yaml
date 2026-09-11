@@ -1,0 +1,351 @@
+basePath: /
+definitions:
+  auth.AuthTokens:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  web.avatarRequest:
+    properties:
+      avatar_url:
+        description: |-
+          AvatarURL is the direct image URL returned by the upload provider
+          (e.g. Cloudinary). Empty string clears the avatar.
+        type: string
+    type: object
+  web.errorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  web.forgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  web.refreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  web.resetPasswordRequest:
+    properties:
+      new_password:
+        type: string
+      token:
+        type: string
+    type: object
+  web.signInRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  web.signUpRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+    type: object
+  web.userResponse:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      full_name:
+        type: string
+      id:
+        type: string
+      phone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Rental listing API.
+  title: EasyRent API
+  version: "1.0"
+paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Request a password-reset mail. Always succeeds so callers cannot
+        probe for accounts.
+      parameters:
+      - description: Forgot password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.forgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Forgot password
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Rotate a refresh token for a new pair.
+      parameters:
+      - description: Refresh
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.AuthTokens'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Refresh tokens
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Consume a reset token and set a new password. Single-use; kills
+        all sessions.
+      parameters:
+      - description: Reset password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.resetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Reset password
+      tags:
+      - auth
+  /auth/signin:
+    post:
+      consumes:
+      - application/json
+      description: Sign in with email and password.
+      parameters:
+      - description: Sign in
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.signInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.AuthTokens'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Sign in
+      tags:
+      - auth
+  /auth/signout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke one refresh token. Idempotent.
+      parameters:
+      - description: Sign out
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Sign out
+      tags:
+      - auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Register a user and return the first token pair.
+      parameters:
+      - description: Sign up
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.signUpRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.AuthTokens'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Sign up
+      tags:
+      - auth
+  /auth/verify:
+    get:
+      description: Consume an email-verification token.
+      parameters:
+      - description: Verification token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Verify email
+      tags:
+      - auth
+  /me:
+    get:
+      description: Return the caller behind the bearer token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.userResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: Current user
+      tags:
+      - auth
+  /me/avatar:
+    put:
+      consumes:
+      - application/json
+      description: Store the avatar image URL from the upload provider. Empty string
+        clears it.
+      parameters:
+      - description: Avatar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.avatarRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.userResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: Set avatar
+      tags:
+      - auth
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and the access token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

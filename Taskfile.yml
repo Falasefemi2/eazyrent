@@ -1,0 +1,65 @@
+version: "3"
+
+# Taskfile (go-task). Run `task <name>`. Install: go install github.com/go-task/task/v3/cmd/task@latest
+# No Makefile in this repo by convention.
+
+dotenv: [".env"]
+
+tasks:
+  default:
+    desc: List tasks
+    cmds:
+      - task --list
+
+  tools:task:
+    desc: Install the task runner itself
+    cmds:
+      - go install github.com/go-task/task/v3/cmd/task@latest
+
+  run:
+    desc: Run the API (needs DATABASE_URL)
+    cmds:
+      - go run ./cmd/api
+
+  dev:
+    desc: Migrate up then run the API
+    cmds:
+      - task: migrate
+      - task: run
+
+  migrate:
+    desc: Apply pending SQL migrations (up)
+    cmds:
+      - go run ./cmd/migrate up
+
+  migrate-down:
+    desc: Roll back the latest migration
+    cmds:
+      - go run ./cmd/migrate down
+
+  docs:
+    desc: Regenerate Swagger docs (needs swag CLI on PATH)
+    cmds:
+      - swag init -g cmd/api/main.go -o docs --parseInternal
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  vet:
+    desc: go vet
+    cmds:
+      - go vet ./...
+
+  fmt:
+    desc: Format code
+    cmds:
+      - gofmt -l -w .
+
+  check:
+    desc: Format check + vet + tests
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test

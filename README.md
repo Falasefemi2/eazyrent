@@ -1,6 +1,6 @@
 # EazyRent (Go rewrite)
 
-Go rewrite of [EasyRent](../easyrent) — a house rental platform backend for
+Go rewrite of [EasyRent](https://github.com/Falasefemi2/easyrent) — a house rental platform backend for
 the Nigerian market. The original is TypeScript (Bun + Effect-TS + Drizzle);
 this port keeps the same Postgres schema and auth behavior in boring,
 idiomatic Go: stdlib HTTP, plain SQL, concrete types, no frameworks.

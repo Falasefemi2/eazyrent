@@ -29,7 +29,7 @@ Auth (ported from the TS `AuthService` + `TokenService` + `PasswordService`):
 - `PUT /me/avatar` → store/clear avatar URL from the upload provider
 - `GET /healthz`, Swagger UI at `GET /swagger/`
 
-Still to port: listings CRUD, listing media, favorites, geospatial search.
+Still to port: favorites, geospatial radius search.
 
 ## Quickstart
 

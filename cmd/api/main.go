@@ -26,6 +26,7 @@ import (
 	"github.com/femi/golang-easyrent/internal/auth"
 	"github.com/femi/golang-easyrent/internal/config"
 	"github.com/femi/golang-easyrent/internal/db"
+	"github.com/femi/golang-easyrent/internal/listing"
 	"github.com/femi/golang-easyrent/internal/web"
 )
 
@@ -56,7 +57,7 @@ func run() error {
 		cfg.RefreshTokenTTL,
 	)
 
-	handler := web.NewHandler(authSvc)
+	handler := web.NewHandler(authSvc, listing.NewService(listing.NewStore(pool)))
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

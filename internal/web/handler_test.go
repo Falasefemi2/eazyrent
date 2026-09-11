@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	"github.com/femi/golang-easyrent/internal/auth"
+	"github.com/femi/golang-easyrent/internal/listing"
 )
 
 func TestHealth(t *testing.T) {
-	h := NewHandler(auth.Service{})
+	h := NewHandler(auth.Service{}, listing.Service{})
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()

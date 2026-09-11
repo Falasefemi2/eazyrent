@@ -7,12 +7,40 @@ definitions:
       refresh_token:
         type: string
     type: object
+  web.addMediaRequest:
+    properties:
+      order:
+        type: integer
+      type:
+        type: string
+      url:
+        type: string
+    type: object
   web.avatarRequest:
     properties:
       avatar_url:
         description: |-
           AvatarURL is the direct image URL returned by the upload provider
           (e.g. Cloudinary). Empty string clears the avatar.
+        type: string
+    type: object
+  web.createListingRequest:
+    properties:
+      address:
+        type: string
+      description:
+        type: string
+      furnished:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+      price:
+        type: string
+      rooms:
+        type: integer
+      title:
         type: string
     type: object
   web.errorResponse:
@@ -23,6 +51,82 @@ definitions:
   web.forgotPasswordRequest:
     properties:
       email:
+        type: string
+    type: object
+  web.listingDetailResponse:
+    properties:
+      landlord_name:
+        type: string
+      landlord_phone:
+        type: string
+      listing:
+        $ref: '#/definitions/web.listingResponse'
+      media:
+        items:
+          $ref: '#/definitions/web.mediaResponse'
+        type: array
+    type: object
+  web.listingPageResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/web.listingResponse'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  web.listingResponse:
+    properties:
+      address:
+        type: string
+      cover_image:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      favorite_count:
+        type: integer
+      furnished:
+        type: boolean
+      id:
+        type: string
+      landlord_id:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      price:
+        type: string
+      rooms:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  web.mediaResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      listing_id:
+        type: string
+      order:
+        type: integer
+      type:
+        type: string
+      url:
         type: string
     type: object
   web.refreshRequest:
@@ -53,6 +157,30 @@ definitions:
       password:
         type: string
       phone:
+        type: string
+    type: object
+  web.updateListingRequest:
+    properties:
+      address:
+        type: string
+      description:
+        type: string
+      furnished:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+      price:
+        type: string
+      rooms:
+        type: integer
+      title:
+        type: string
+    type: object
+  web.updateStatusRequest:
+    properties:
+      status:
         type: string
     type: object
   web.userResponse:
@@ -290,6 +418,317 @@ paths:
       summary: Verify email
       tags:
       - auth
+  /listings:
+    get:
+      description: Public paginated listing search with filters.
+      parameters:
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Page size (1-100)
+        in: query
+        name: limit
+        type: integer
+      - description: avaiable, rented or inative
+        in: query
+        name: status
+        type: string
+      - description: true or false
+        in: query
+        name: furnished
+        type: string
+      - description: Exact rooms
+        in: query
+        name: rooms
+        type: integer
+      - description: Minimum rooms
+        in: query
+        name: minRooms
+        type: integer
+      - description: Minimum price
+        in: query
+        name: minPrice
+        type: number
+      - description: Maximum price
+        in: query
+        name: maxPrice
+        type: number
+      - description: Title, address and description search
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.listingPageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: List listings
+      tags:
+      - listings
+    post:
+      consumes:
+      - application/json
+      description: Create a listing for the authenticated landlord.
+      parameters:
+      - description: Listing
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.createListingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/web.listingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: Create listing
+      tags:
+      - listings
+  /listings/{id}:
+    delete:
+      description: Delete the caller's listing; media and favorites cascade.
+      parameters:
+      - description: Listing ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: Delete listing
+      tags:
+      - listings
+    get:
+      description: Get one listing with media and landlord contact.
+      parameters:
+      - description: Listing ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.listingDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      summary: Get listing
+      tags:
+      - listings
+    patch:
+      consumes:
+      - application/json
+      description: Partial update of the caller's listing.
+      parameters:
+      - description: Listing ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to change
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.updateListingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.listingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: Update listing
+      tags:
+      - listings
+  /listings/{id}/media:
+    post:
+      consumes:
+      - application/json
+      description: Attach an already-uploaded file URL (uploads go straight to the
+        media provider).
+      parameters:
+      - description: Listing ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Media
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.addMediaRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/web.mediaResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: Add listing media
+      tags:
+      - listings
+  /listings/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Set avaiable, rented or inative on the caller's listing.
+      parameters:
+      - description: Listing ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/web.updateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.listingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: Update listing status
+      tags:
+      - listings
+  /listings/my:
+    get:
+      description: Paginated listings of the authenticated landlord.
+      parameters:
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Page size (1-100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.listingPageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/web.errorResponse'
+      security:
+      - Bearer: []
+      summary: My listings
+      tags:
+      - listings
   /me:
     get:
       description: Return the caller behind the bearer token.

@@ -5,20 +5,23 @@ import (
 	"net/http"
 
 	"github.com/femi/golang-easyrent/internal/auth"
+	"github.com/femi/golang-easyrent/internal/listing"
 
 	_ "github.com/femi/golang-easyrent/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type Handler struct {
-	AuthSvc auth.Service
-	Auth    Auth
+	AuthSvc  auth.Service
+	Auth     Auth
+	Listings listing.Service
 }
 
-func NewHandler(authSvc auth.Service) Handler {
+func NewHandler(authSvc auth.Service, listings listing.Service) Handler {
 	return Handler{
-		AuthSvc: authSvc,
-		Auth:    Auth{Users: authSvc.Users, Tokens: authSvc.Tokens},
+		AuthSvc:  authSvc,
+		Auth:     Auth{Users: authSvc.Users, Tokens: authSvc.Tokens},
+		Listings: listings,
 	}
 }
 
@@ -34,6 +37,14 @@ func (h Handler) Routes() *http.ServeMux {
 	mux.HandleFunc("POST /auth/reset-password", h.resetPassword)
 	mux.HandleFunc("GET /me", h.Auth.RequireAuth(h.me))
 	mux.HandleFunc("PUT /me/avatar", h.Auth.RequireAuth(h.updateAvatar))
+	mux.HandleFunc("GET /listings", h.listListings)
+	mux.HandleFunc("GET /listings/my", h.Auth.RequireAuth(h.myListings))
+	mux.HandleFunc("GET /listings/{id}", h.getListing)
+	mux.HandleFunc("POST /listings", h.Auth.RequireAuth(h.createListing))
+	mux.HandleFunc("PATCH /listings/{id}", h.Auth.RequireAuth(h.updateListing))
+	mux.HandleFunc("DELETE /listings/{id}", h.Auth.RequireAuth(h.deleteListing))
+	mux.HandleFunc("PATCH /listings/{id}/status", h.Auth.RequireAuth(h.updateListingStatus))
+	mux.HandleFunc("POST /listings/{id}/media", h.Auth.RequireAuth(h.addMedia))
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 	return mux
 }

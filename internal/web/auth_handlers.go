@@ -10,13 +10,14 @@ import (
 	"time"
 
 	"github.com/femi/golang-easyrent/internal/auth"
+	"github.com/femi/golang-easyrent/internal/listing"
 )
 
 type errorResponse struct {
 	Error string `json:"error"`
 }
 
-func authErrorStatus(err error) int {
+func errorStatus(err error) int {
 	switch {
 	case errors.Is(err, auth.ErrEmailTaken):
 		return http.StatusConflict
@@ -24,18 +25,21 @@ func authErrorStatus(err error) int {
 		errors.Is(err, auth.ErrInvalidToken),
 		errors.Is(err, auth.ErrTokenExpired):
 		return http.StatusUnauthorized
-	case errors.Is(err, auth.ErrEmailNotVerified):
+	case errors.Is(err, auth.ErrEmailNotVerified),
+		errors.Is(err, listing.ErrListingForbidden):
 		return http.StatusForbidden
 	case errors.Is(err, auth.ErrInvalidVerificationToken),
 		errors.Is(err, auth.ErrInvalidResetToken):
 		return http.StatusBadRequest
+	case errors.Is(err, listing.ErrListingNotFound):
+		return http.StatusNotFound
 	default:
 		return http.StatusInternalServerError
 	}
 }
 
-func writeAuthError(w http.ResponseWriter, err error) {
-	status := authErrorStatus(err)
+func writeServiceError(w http.ResponseWriter, err error) {
+	status := errorStatus(err)
 	if status == http.StatusInternalServerError {
 		writeError(w, status, "internal error")
 		return
@@ -94,7 +98,7 @@ func (h Handler) signUp(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.AuthSvc.SignUp(r.Context(), req.Email, req.Password, req.Phone, req.FullName)
 	if err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, tokens)
@@ -132,7 +136,7 @@ func (h Handler) signIn(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.AuthSvc.SignIn(r.Context(), req.Email, req.Password)
 	if err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, tokens)
@@ -167,7 +171,7 @@ func (h Handler) refresh(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.AuthSvc.Refresh(r.Context(), strings.TrimSpace(req.RefreshToken))
 	if err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, tokens)
@@ -196,7 +200,7 @@ func (h Handler) signOut(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.AuthSvc.SignOut(r.Context(), strings.TrimSpace(req.RefreshToken)); err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -221,7 +225,7 @@ func (h Handler) verifyEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.AuthSvc.VerifyEmail(r.Context(), token); err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "verified"})
@@ -276,7 +280,7 @@ func (h Handler) me(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.AuthSvc.Users.FindByID(r.Context(), cu.UserID)
 	if err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, toUserResponse(user))
@@ -323,13 +327,13 @@ func (h Handler) updateAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.AuthSvc.Users.UpdateAvatar(r.Context(), cu.UserID, req.AvatarURL); err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 
 	user, err := h.AuthSvc.Users.FindByID(r.Context(), cu.UserID)
 	if err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, toUserResponse(user))
@@ -363,7 +367,7 @@ func (h Handler) forgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.AuthSvc.RequestPasswordReset(r.Context(), req.Email); err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "if the email is registered, a reset link was sent"})
@@ -403,7 +407,7 @@ func (h Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.AuthSvc.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
-		writeAuthError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "password reset"})

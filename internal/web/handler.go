@@ -31,7 +31,7 @@ func NewHandler(authSvc auth.Service, listings listing.Service, favorites favori
 	}
 }
 
-func (h Handler) Routes() *http.ServeMux {
+func (h Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", h.health)
 	mux.HandleFunc("POST /auth/signup", h.signUp)
@@ -55,7 +55,7 @@ func (h Handler) Routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /favorites/{id}", h.Auth.RequireAuth(limit(h.Limits.FavWrite, userKey("fav-write:"), 60, h.removeFavorite)))
 	mux.HandleFunc("GET /favorites", h.Auth.RequireAuth(limit(h.Limits.FavWrite, userKey("fav-list:"), 60, h.listFavorites)))
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
-	return mux
+	return withCORS(mux)
 }
 
 func (h Handler) health(w http.ResponseWriter, _ *http.Request) {

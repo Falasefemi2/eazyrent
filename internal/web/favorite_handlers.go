@@ -37,7 +37,7 @@ func (h Handler) addFavorite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Favorites.Add(r.Context(), cu.UserID, listingID); err != nil {
-		writeServiceError(w, err)
+		writeServiceError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "favorited"})
@@ -67,7 +67,7 @@ func (h Handler) removeFavorite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Favorites.Remove(r.Context(), cu.UserID, listingID); err != nil {
-		writeServiceError(w, err)
+		writeServiceError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -100,7 +100,7 @@ func (h Handler) listFavorites(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := h.Favorites.List(r.Context(), cu.UserID, page, limit)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, toPageResponse(p))

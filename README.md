@@ -29,7 +29,16 @@ Auth (ported from the TS `AuthService` + `TokenService` + `PasswordService`):
 - `PUT /me/avatar` → store/clear avatar URL from the upload provider
 - `GET /healthz`, Swagger UI at `GET /swagger/`
 
-Still to port: favorites, geospatial radius search.
+Favorites:
+
+- `POST /favorites/{id}` → favorite a listing (idempotent, 404 if listing missing)
+- `DELETE /favorites/{id}` → unfavorite (idempotent, 204)
+- `GET /favorites?page=&limit=` → caller's favorites, newest first, with covers + favorite counts
+
+Still to port: geospatial radius search.
+
+Rate limits are in-memory (no Redis): list 30/min and detail 60/min per
+IP, create 10/hour per user — 429 with `Retry-After` when exceeded.
 
 ## Quickstart
 
@@ -71,8 +80,9 @@ internal/auth  users + refresh/reset tokens: Store (SQL), Service (flows),
                Tokens (JWT), passwords (argon2id), dummy EmailSender
 internal/config  env parsing + validation (fails fast, no silent defaults)
 internal/db    *sql.DB wiring over pgx stdlib
+internal/favorite  favorites join table: Store (SQL), Service (idempotent add/remove)
 internal/web   HTTP boundary: decode + validate once, call services/stores,
-               RequireAuth bearer middleware, Swagger mount
+                RequireAuth bearer middleware, Swagger mount
 migrations     000001 core tables, 000002 password_reset_tokens
 docs           resend-email.md, avatar-uploads.md (swagger.* is generated)
 ```

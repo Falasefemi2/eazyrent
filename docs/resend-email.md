@@ -1,8 +1,11 @@
 # Sending real email with Resend
 
-The app currently logs auth mail to stdout via the dummy `auth.EmailSender`
-(`internal/auth/email.go`). This guide swaps it for
-[Resend](https://resend.com) using only the standard library (no SDK needed).
+The app sends auth mail through [Resend](https://resend.com) using the
+official SDK (`github.com/resend/resend-go/v4`). `auth.EmailSender`
+(`internal/auth/email.go`) is the only place that touches Resend; the
+service layer just calls `SendVerificationEmail` /
+`SendPasswordResetEmail` and treats failures as best-effort (logged, auth
+still succeeds).
 
 ## 1. Free tier
 
@@ -44,101 +47,16 @@ AppURL       string
 `RESEND_API_KEY` stays required only when the real sender is wired; keep
 the dummy as the default in `main.go` until you are ready.
 
-## 4. Replace the dummy sender
+## 4. How it is wired (already done)
 
-`internal/auth/email.go` becomes a thin HTTP client. Full replacement:
+`internal/auth/email.go` builds a `resend.NewClient` per send and posts a
+`resend.SendEmailRequest{From, To, Subject, Html}`. `cmd/api/main.go`
+fills `auth.EmailSender{APIKey, From, AppURL}` from config; `APP_URL`
+should become the **frontend** origin once you have one, so links land in
+the UI instead of the API.
 
-```go
-package auth
-
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "net/http"
-    "time"
-)
-
-// EmailSender delivers auth mail through Resend's HTTPS API.
-type EmailSender struct {
-    APIKey string
-    From   string
-    AppURL string
-    Client *http.Client // nil = http.DefaultClient
-}
-
-func (s EmailSender) client() *http.Client {
-    if s.Client != nil {
-        return s.Client
-    }
-    return &http.Client{Timeout: 10 * time.Second}
-}
-
-func (s EmailSender) send(to, subject, html string) error {
-    body, _ := json.Marshal(map[string]string{
-        "from":    s.From,
-        "to":      to,
-        "subject": subject,
-        "html":    html,
-    })
-    req, err := http.NewRequest(
-        http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(body),
-    )
-    if err != nil {
-        return err
-    }
-    req.Header.Set("Authorization", "Bearer "+s.APIKey)
-    req.Header.Set("Content-Type", "application/json")
-
-    resp, err := s.client().Do(req)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
-    if resp.StatusCode < 200 || resp.StatusCode > 299 {
-        return fmt.Errorf("resend: unexpected status %s", resp.Status)
-    }
-    return nil
-}
-
-// SendVerificationEmail mails the email-verification link.
-func (s EmailSender) SendVerificationEmail(to, fullName, token string) error {
-    link := fmt.Sprintf("%s/auth/verify?token=%s", s.AppURL, token)
-    return s.send(to, "Verify your EasyRent email", fmt.Sprintf(
-        `<p>Hi %s,</p><p>Confirm your email:</p><p><a href="%s">%s</a></p><p>Link expires in 24 hours.</p>`,
-        fullName, link, link,
-    ))
-}
-
-// SendPasswordResetEmail mails the password-reset link.
-func (s EmailSender) SendPasswordResetEmail(to, fullName, token string) error {
-    link := fmt.Sprintf("%s/reset-password?token=%s", s.AppURL, token)
-    return s.send(to, "Reset your EasyRent password", fmt.Sprintf(
-        `<p>Hi %s,</p><p>Reset your password:</p><p><a href="%s">%s</a></p><p>Link expires in 1 hour. Ignore this mail if you did not ask.</p>`,
-        fullName, link, link,
-    ))
-}
-```
-
-Wire it in `cmd/api/main.go` (replacing `auth.EmailSender{}`):
-
-```go
-auth.EmailSender{
-    APIKey: cfg.ResendAPIKey,
-    From:   cfg.EmailFrom,
-    AppURL: cfg.AppURL,
-},
-```
-
-Notes:
-
-- The service layer calls these the same way as the dummy, so
-  `service.go` does not change. Mail failures stay best-effort (logged,
-  auth still succeeds), matching the current behavior.
-- `APP_URL` should be the **frontend** origin once you have one, so links
-  land in the UI instead of the API.
-- Keep tokens out of server logs in production: the dummy's `token=%s`
-  log lines are for development only.
+Keep tokens out of server logs in production: the `auth email sent`
+log line records the Resend id, recipient and subject only.
 
 ## 5. Testing
 

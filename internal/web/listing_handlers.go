@@ -223,6 +223,7 @@ func (r createListingRequest) validate() error {
 //	@Success		201		{object}	listingResponse
 //	@Failure		400		{object}	errorResponse
 //	@Failure		401		{object}	errorResponse
+//	@Failure		429		{object}	errorResponse
 //	@Router			/listings [post]
 func (h Handler) createListing(w http.ResponseWriter, r *http.Request) {
 	cu, ok := CurrentUserOf(r)
@@ -272,6 +273,7 @@ func (h Handler) createListing(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	listingDetailResponse
 //	@Failure		400	{object}	errorResponse
 //	@Failure		404	{object}	errorResponse
+//	@Failure		429	{object}	errorResponse
 //	@Router			/listings/{id} [get]
 func (h Handler) getListing(w http.ResponseWriter, r *http.Request) {
 	id, err := pathListingID(r)
@@ -378,6 +380,7 @@ func parseFilters(r *http.Request) (listing.Filters, error) {
 //	@Param			search		query		string	false	"Title, address and description search"
 //	@Success		200			{object}	listingPageResponse
 //	@Failure		400			{object}	errorResponse
+//	@Failure		429			{object}	errorResponse
 //	@Router			/listings [get]
 func (h Handler) listListings(w http.ResponseWriter, r *http.Request) {
 	page, limit, err := parsePageQuery(r)

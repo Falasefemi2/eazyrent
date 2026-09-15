@@ -7,7 +7,7 @@ House-rental backend for the Nigerian market. Go with stdlib `net/http` only —
 Needs Go 1.27+, Postgres with PostGIS, and `task`.
 
 ```powershell
-Copy-Item .env.example .env   # set DATABASE_URL, ACCESS_TOKEN_SECRET, RESEND_API_KEY
+Copy-Item .env.example .env   # set DATABASE_URL, ACCESS_TOKEN_SECRET, BREVO_API_KEY
 task dev                       # migrate up, serve on :8080
 ```
 
@@ -29,7 +29,7 @@ Things worth knowing:
 - `price` is `NUMERIC(14,2)` (migration 000003 widened it — Naira rents overflowed 10,2).
 - Media rows store URLs only; files live on Cloudinary, uploaded straight from the browser.
 - Auth is JWT access tokens (HS256) + rotating SHA-256 refresh tokens; reuse of a revoked token revokes all sessions. Passwords are argon2id.
-- Emails print to stdout unless Resend is configured — see `docs/resend-email.md`. Avatar flow: `docs/avatar-uploads.md`.
+- Emails send via Brevo — see `docs/brevo-email.md`. Avatar flow: `docs/avatar-uploads.md`.
 - Rate limits are in-memory (30/min list, 60/min detail per IP, 10/hour create per user).
 
 ## Commands
@@ -53,5 +53,5 @@ internal/listing, internal/favorite
 internal/ratelimit
 internal/web   decode + validate at the boundary, bearer middleware, CORS
 migrations     000001 core tables, 000002 password resets, 000003 wider price
-docs           resend + avatar setup (swagger.* is generated)
+docs           brevo + avatar setup (swagger.* is generated)
 ```

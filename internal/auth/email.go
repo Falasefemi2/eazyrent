@@ -1,33 +1,101 @@
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
-
-	"github.com/resend/resend-go/v4"
+	"strings"
+	"time"
 )
+
+// BrevoAPIBase is the default base URL for Brevo's v3 API.
+// Override EmailSender.BaseURL in tests to point at a stub server.
+const BrevoAPIBase = "https://api.brevo.com/v3"
 
 type EmailSender struct {
 	APIKey string
 	From   string
 	AppURL string
+	// BaseURL overrides BrevoAPIBase (tests). Empty means BrevoAPIBase.
+	BaseURL string
+	// HTTPClient overrides the default client (tests). Nil means a
+	// short-timeout default client.
+	HTTPClient *http.Client
 }
 
 func (s EmailSender) send(to, subject, htmlBody string) error {
-	client := resend.NewClient(s.APIKey)
-	sent, err := client.Emails.Send(&resend.SendEmailRequest{
-		From:    s.From,
-		To:      []string{to},
-		Subject: subject,
-		Html:    htmlBody,
-	})
+	senderName, senderEmail := parseSender(s.From)
+	if senderEmail == "" {
+		return fmt.Errorf("invalid EMAIL_FROM %q: need \"Name <addr@example.com>\" or \"addr@example.com\"", s.From)
+	}
+
+	payload := map[string]any{
+		"sender":      map[string]string{"name": senderName, "email": senderEmail},
+		"to":          []map[string]string{{"email": to}},
+		"subject":     subject,
+		"htmlContent": htmlBody,
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	log.Printf("auth email sent id=%s to=%s subject=%q", sent.Id, to, subject)
+
+	base := s.BaseURL
+	if base == "" {
+		base = BrevoAPIBase
+	}
+	client := s.HTTPClient
+	if client == nil {
+		client = &http.Client{Timeout: 10 * time.Second}
+	}
+
+	req, err := http.NewRequest(http.MethodPost, strings.TrimSuffix(base, "/")+"/smtp/email", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("api-key", s.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("brevo smtp/email: status %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+	}
+
+	var out struct {
+		MessageID string `json:"messageId"`
+	}
+	_ = json.Unmarshal(respBody, &out)
+	log.Printf("auth email sent id=%s to=%s subject=%q", out.MessageID, to, subject)
 	return nil
+}
+
+// parseSender splits "Name <addr@example.com>" or a bare address into
+// display name and email parts for Brevo's sender object.
+func parseSender(from string) (name, email string) {
+	from = strings.TrimSpace(from)
+	if from == "" {
+		return "", ""
+	}
+	if i := strings.LastIndex(from, "<"); i >= 0 {
+		if j := strings.Index(from[i:], ">"); j >= 0 {
+			email = strings.TrimSpace(from[i+1 : i+j])
+			name = strings.TrimSpace(strings.Trim(from[:i], `"' `))
+			return name, email
+		}
+	}
+	return "", from
 }
 
 func (s EmailSender) SendVerificationEmail(to, fullName, token string) error {

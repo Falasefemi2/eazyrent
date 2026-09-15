@@ -55,7 +55,7 @@ func run() error {
 	authSvc := auth.NewService(
 		auth.NewStore(pool),
 		auth.Tokens{Secret: []byte(cfg.AccessTokenSecret), AccessTTL: cfg.AccessTokenTTL},
-		auth.EmailSender{APIKey: cfg.ResendAPIKey, From: cfg.EmailFrom, AppURL: cfg.AppURL},
+		auth.EmailSender{APIKey: cfg.BrevoAPIKey, From: cfg.EmailFrom, AppURL: cfg.FrontendURL},
 		cfg.RefreshTokenTTL,
 	)
 

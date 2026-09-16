@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/femi/golang-easyrent/docs"
 	"github.com/femi/golang-easyrent/internal/auth"
 	"github.com/femi/golang-easyrent/internal/favorite"
 	"github.com/femi/golang-easyrent/internal/listing"
 	"github.com/femi/golang-easyrent/internal/ratelimit"
 
-	_ "github.com/femi/golang-easyrent/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -54,8 +54,41 @@ func (h Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /favorites/{id}", h.Auth.RequireAuth(limit(h.Limits.FavWrite, userKey("fav-write:"), 60, h.addFavorite)))
 	mux.HandleFunc("DELETE /favorites/{id}", h.Auth.RequireAuth(limit(h.Limits.FavWrite, userKey("fav-write:"), 60, h.removeFavorite)))
 	mux.HandleFunc("GET /favorites", h.Auth.RequireAuth(limit(h.Limits.FavWrite, userKey("fav-list:"), 60, h.listFavorites)))
-	mux.Handle("/swagger/", httpSwagger.WrapHandler)
+	mux.Handle("/swagger/", swaggerHandler())
 	return withCORS(mux)
+}
+
+// swaggerHandler serves Swagger UI with a per-request host/scheme derived from
+// the incoming request (X-Forwarded-Host/Proto when behind Railway). This
+// makes "Try it out" work even if APP_URL is not set on the host.
+func swaggerHandler() http.Handler {
+	base := httpSwagger.WrapHandler
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Header.Get("X-Forwarded-Host")
+		if host == "" {
+			host = r.Host
+		}
+		scheme := r.Header.Get("X-Forwarded-Proto")
+		if scheme == "" {
+			if r.TLS != nil {
+				scheme = "https"
+			} else {
+				scheme = "http"
+			}
+		}
+
+		origHost, origSchemes := docs.SwaggerInfo.Host, docs.SwaggerInfo.Schemes
+		if host != "" {
+			docs.SwaggerInfo.Host = host
+		}
+		if scheme == "https" || scheme == "http" {
+			docs.SwaggerInfo.Schemes = []string{scheme}
+		}
+
+		base.ServeHTTP(w, r)
+
+		docs.SwaggerInfo.Host, docs.SwaggerInfo.Schemes = origHost, origSchemes
+	})
 }
 
 func (h Handler) health(w http.ResponseWriter, _ *http.Request) {
